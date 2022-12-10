@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Scheme
-   LastUpgradeVersion = "1330"
+   LastUpgradeVersion = "1410"
    version = "1.3">
    <BuildAction
       parallelizeBuildables = "YES"
@@ -29,7 +29,7 @@
       shouldUseLaunchSchemeArgsEnv = "YES">
       <Testables>
          <TestableReference
-            skipped = "NO">
+            skipped = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "CodeFileTests"
@@ -39,7 +39,7 @@
             </BuildableReference>
          </TestableReference>
          <TestableReference
-            skipped = "NO">
+            skipped = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "WorkspaceClientTests"
@@ -49,7 +49,7 @@
             </BuildableReference>
          </TestableReference>
          <TestableReference
-            skipped = "NO">
+            skipped = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "GitClientTests"
@@ -59,7 +59,7 @@
             </BuildableReference>
          </TestableReference>
          <TestableReference
-            skipped = "NO">
+            skipped = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "StatusBarTests"
@@ -83,7 +83,7 @@
             </SkippedTests>
          </TestableReference>
          <TestableReference
-            skipped = "NO">
+            skipped = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "CodeEditUtilsTests"
@@ -91,6 +91,72 @@
                BlueprintName = "CodeEditUtilsTests"
                ReferencedContainer = "container:CodeEditModules">
             </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "B658FB3C27DA9E1000EA4DBD"
+               BuildableName = "CodeEditTests.xctest"
+               BlueprintName = "CodeEditTests"
+               ReferencedContainer = "container:CodeEdit.xcodeproj">
+            </BuildableReference>
+            <SkippedTests>
+               <Test
+                  Identifier = "CodeEditUIUnitTests/testBranchPickerDark()">
+               </Test>
+               <Test
+                  Identifier = "CodeEditUIUnitTests/testBranchPickerLight()">
+               </Test>
+               <Test
+                  Identifier = "CodeEditUIUnitTests/testEffectViewDark()">
+               </Test>
+               <Test
+                  Identifier = "CodeEditUIUnitTests/testEffectViewLight()">
+               </Test>
+               <Test
+                  Identifier = "CodeEditUIUnitTests/testFontPickerViewDark()">
+               </Test>
+               <Test
+                  Identifier = "CodeEditUIUnitTests/testFontPickerViewLight()">
+               </Test>
+               <Test
+                  Identifier = "CodeEditUIUnitTests/testHelpButtonDark()">
+               </Test>
+               <Test
+                  Identifier = "CodeEditUIUnitTests/testHelpButtonLight()">
+               </Test>
+               <Test
+                  Identifier = "CodeEditUIUnitTests/testSegmentedControlDark()">
+               </Test>
+               <Test
+                  Identifier = "CodeEditUIUnitTests/testSegmentedControlLight()">
+               </Test>
+               <Test
+                  Identifier = "CodeEditUIUnitTests/testSegmentedControlProminentDark()">
+               </Test>
+               <Test
+                  Identifier = "CodeEditUIUnitTests/testSegmentedControlProminentLight()">
+               </Test>
+               <Test
+                  Identifier = "WelcomeModuleUnitTests/testRecentJSFileDarkSnapshot()">
+               </Test>
+               <Test
+                  Identifier = "WelcomeModuleUnitTests/testRecentJSFileLightSnapshot()">
+               </Test>
+               <Test
+                  Identifier = "WelcomeModuleUnitTests/testRecentProjectItemDarkSnapshot()">
+               </Test>
+               <Test
+                  Identifier = "WelcomeModuleUnitTests/testRecentProjectItemLightSnapshot()">
+               </Test>
+               <Test
+                  Identifier = "WelcomeModuleUnitTests/testWelcomeActionViewDarkSnapshot()">
+               </Test>
+               <Test
+                  Identifier = "WelcomeModuleUnitTests/testWelcomeActionViewLightSnapshot()">
+               </Test>
+            </SkippedTests>
          </TestableReference>
       </Testables>
    </TestAction>

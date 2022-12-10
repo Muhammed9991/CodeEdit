@@ -332,7 +332,8 @@
       "avatar_url": "https://avatars.githubusercontent.com/u/80204376?v=4",
       "profile": "https://github.com/Muhammed9991",
       "contributions": [
-        "code"
+        "code",
+        "maintenance"
       ]
     },
     {
@@ -407,6 +408,52 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "NakaokaRei",
+      "name": "Nakaoka Rei",
+      "avatar_url": "https://avatars.githubusercontent.com/u/39183069?v=4",
+      "profile": "https://github.com/NakaokaRei",
+      "contributions": [
+        "code",
+        "bug"
+      ]
+    },
+    {
+      "login": "alexdeem",
+      "name": "Alex Deem",
+      "avatar_url": "https://avatars.githubusercontent.com/u/404584?v=4",
+      "profile": "https://github.com/alexdeem",
+      "contributions": [
+        "maintenance"
+      ]
+    },
+    {
+      "login": "denizak",
+      "name": "deni zakya",
+      "avatar_url": "https://avatars.githubusercontent.com/u/1758456?v=4",
+      "profile": "https://github.com/denizak",
+      "contributions": [
+        "bug"
+      ]
+    },
+    {
+      "login": "ahmdyasser",
+      "name": "Ahmad Yasser",
+      "avatar_url": "https://avatars.githubusercontent.com/u/42544598?v=4",
+      "profile": "https://github.com/ahmdyasser",
+      "contributions": [
+        "bug"
+      ]
+    },
+    {
+      "login": "ezraberch",
+      "name": "ezraberch",
+      "avatar_url": "https://avatars.githubusercontent.com/u/49635435?v=4",
+      "profile": "https://github.com/ezraberch",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,
@@ -414,5 +461,6 @@
   "projectOwner": "CodeEditApp",
   "repoType": "github",
   "repoHost": "https://github.com",
-  "skipCi": true
+  "skipCi": true,
+  "commitConvention": "angular"
 }
