@@ -9,6 +9,7 @@ import SwiftUI
 
 protocol OutlineTableViewCellDelegate: AnyObject {
     func moveFile(file: WorkspaceClient.FileItem, to destination: URL)
+    func copyFile(file: WorkspaceClient.FileItem, to destination: URL)
 }
 
 /// A `NSTableCellView` showing an ``icon`` and a ``label``
@@ -27,9 +28,11 @@ final class OutlineTableViewCell: NSTableCellView {
     ///   - frameRect: The frame of the cell.
     ///   - item: The file item the cell represents.
     ///   - isEditable: Set to true if the user should be able to edit the file name.
-    init(frame frameRect: NSRect, item: WorkspaceClient.FileItem?,
-         isEditable: Bool = true,
-         delegate: OutlineTableViewCellDelegate? = nil) {
+    init(
+        frame frameRect: NSRect, item: WorkspaceClient.FileItem?,
+        isEditable: Bool = true,
+        delegate: OutlineTableViewCellDelegate? = nil
+    ) {
         super.init(frame: frameRect)
 
         self.delegate = delegate
@@ -129,11 +132,9 @@ final class OutlineTableViewCell: NSTableCellView {
     /// - Parameter item: The `FileItem` to get the color for
     /// - Returns: A `NSColor` for the given `FileItem`.
     private func color(for item: WorkspaceClient.FileItem) -> NSColor {
-        if item.children == nil && prefs.fileIconStyle == .color {
-            return NSColor(item.iconColor)
-        } else {
-            return NSColor(named: "FolderBlue")!
-        }
+        return prefs.fileIconStyle == .color
+            ? item.children == nil ? NSColor(item.iconColor) : NSColor(named: "FolderBlue")!
+            : .secondaryLabelColor
     }
 }
 

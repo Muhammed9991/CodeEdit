@@ -57,9 +57,7 @@ struct CodeFileView: View {
 
     @State
     private var font: NSFont = {
-        let size = AppPreferencesModel.shared.preferences.textEditing.font.size
-        let name = AppPreferencesModel.shared.preferences.textEditing.font.name
-        return NSFont(name: name, size: Double(size)) ?? NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+        return AppPreferencesModel.shared.preferences.textEditing.font.current()
     }()
 
     var body: some View {
@@ -69,11 +67,28 @@ struct CodeFileView: View {
             theme: $selectedTheme.editor.editorTheme,
             font: $font,
             tabWidth: $prefs.preferences.textEditing.defaultTabWidth,
-            lineHeight: .constant(1.2), // TODO: Add to preferences
-            cursorPosition: codeFile.$cursorPosition
+            lineHeight: $prefs.preferences.textEditing.lineHeightMultiple,
+            wrapLines: $prefs.preferences.textEditing.wrapLinesToEditorWidth,
+            cursorPosition: codeFile.$cursorPosition,
+            useThemeBackground: prefs.preferences.theme.useThemeBackground
         )
         .id(codeFile.fileURL)
-        .background(selectedTheme.editor.background.swiftColor)
+        .background {
+            if colorScheme == .dark {
+                if prefs.preferences.theme.selectedTheme == prefs.preferences.theme.selectedLightTheme {
+                    Color.white
+                } else {
+                    EffectView(.underPageBackground)
+                }
+            } else {
+                if prefs.preferences.theme.selectedTheme == prefs.preferences.theme.selectedDarkTheme {
+                    Color.black
+                } else {
+                    EffectView(.contentBackground)
+                }
+
+            }
+        }
         .disabled(!editable)
         .frame(maxHeight: .infinity)
         .onChange(of: ThemeModel.shared.selectedTheme) { newValue in
@@ -88,10 +103,7 @@ struct CodeFileView: View {
             }
         }
         .onChange(of: prefs.preferences.textEditing.font) { _ in
-            font = NSFont(
-                name: prefs.preferences.textEditing.font.name,
-                size: Double(prefs.preferences.textEditing.font.size)
-            ) ?? .monospacedSystemFont(ofSize: 12, weight: .regular)
+            font = AppPreferencesModel.shared.preferences.textEditing.font.current()
         }
     }
 

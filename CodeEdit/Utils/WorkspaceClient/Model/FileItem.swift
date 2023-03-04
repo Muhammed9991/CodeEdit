@@ -116,6 +116,8 @@ extension WorkspaceClient {
             switch children {
             case nil:
                 return FileIcon.fileIcon(fileType: fileType)
+            case .some where parent == nil:
+                return "folder.fill.badge.gearshape"
             case let .some(children):
                 if self.watcher == nil && !self.activateWatcher() {
                     return "questionmark.folder"
@@ -200,9 +202,11 @@ extension WorkspaceClient {
 
             // create the folder
             do {
-                try FileItem.fileManger.createDirectory(at: folderUrl,
-                                                        withIntermediateDirectories: true,
-                                                        attributes: [:])
+                try FileItem.fileManger.createDirectory(
+                    at: folderUrl,
+                    withIntermediateDirectories: true,
+                    attributes: [:]
+                )
             } catch {
                 fatalError(error.localizedDescription)
             }
@@ -210,7 +214,7 @@ extension WorkspaceClient {
 
         /// This function allows creating files in the selected folder or project main directory
         /// - Parameter fileName: The name of the new file
-        func addFile(fileName: String) {
+        func addFile(fileName: String) -> String {
             // check if folder, if it is create file under self
             var fileUrl = (self.isFolder ?
                        self.url.appendingPathComponent(fileName) :
@@ -229,6 +233,8 @@ extension WorkspaceClient {
                 contents: nil,
                 attributes: [FileAttributeKey.creationDate: Date()]
             )
+
+            return fileUrl.path
         }
 
         /// This function deletes the item or folder from the current project
@@ -255,9 +261,9 @@ extension WorkspaceClient {
         }
 
         /// This function duplicates the item or folder
-        func duplicate() {
+        func duplicate(to destination: URL? = nil) {
+            var fileUrl = destination == nil ? self.url : destination!
             // if a file/folder with the same name exists, add "copy" to the end
-            var fileUrl = self.url
             while FileItem.fileManger.fileExists(atPath: fileUrl.path) {
                 let previousName = fileUrl.deletingPathExtension().lastPathComponent
                 let filextension = fileUrl.pathExtension
@@ -285,7 +291,14 @@ extension WorkspaceClient {
                 try FileItem.fileManger.moveItem(at: self.url, to: newLocation)
                 self.url = newLocation
             } catch {
-                fatalError(error.localizedDescription)
+                let errorCode = (error as NSError).code
+                let errorAlert = NSAlert()
+                errorAlert.messageText = """
+                The operation can’t be completed because an unexpected error occurred (error code \(String(errorCode))).
+                """
+                errorAlert.alertStyle = .critical
+                errorAlert.addButton(withTitle: "OK")
+                errorAlert.runModal()
             }
         }
     }

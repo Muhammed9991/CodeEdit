@@ -18,15 +18,24 @@ struct BreadcrumbsView: View {
     @Environment(\.controlActiveState)
     private var activeState
 
-    @State
-    private var fileItems: [WorkspaceClient.FileItem] = []
-
     init(
         file: WorkspaceClient.FileItem,
         tappedOpenFile: @escaping (WorkspaceClient.FileItem) -> Void
     ) {
         self.file = file
         self.tappedOpenFile = tappedOpenFile
+    }
+
+    var fileItems: [WorkspaceClient.FileItem] {
+        var treePath: [WorkspaceClient.FileItem] = []
+        var currentFile: WorkspaceClient.FileItem? = file
+
+        while let currentFileLoop = currentFile {
+            treePath.insert(currentFileLoop, at: 0)
+            currentFile = currentFileLoop.parent
+        }
+
+        return treePath
     }
 
     var body: some View {
@@ -42,13 +51,8 @@ struct BreadcrumbsView: View {
             }
             .padding(.horizontal, 10)
         }
-        .frame(height: 28, alignment: .center)
-        .onAppear {
-            fileInfo(self.file)
-        }
-        .onChange(of: file) { newFile in
-            fileInfo(newFile)
-        }
+        .frame(height: 27, alignment: .center)
+        .background(EffectView(.headerView).frame(height: 27))
     }
 
     private var chevron: some View {
@@ -58,14 +62,5 @@ struct BreadcrumbsView: View {
             .scaleEffect(x: 1.30, y: 1.0, anchor: .center)
             .imageScale(.large)
             .opacity(activeState != .inactive ? 0.8 : 0.5)
-    }
-
-    private func fileInfo(_ file: WorkspaceClient.FileItem) {
-        fileItems = []
-        var currentFile: WorkspaceClient.FileItem? = file
-        while let currentFileLoop = currentFile {
-            fileItems.insert(currentFileLoop, at: 0)
-            currentFile = currentFileLoop.parent
-        }
     }
 }

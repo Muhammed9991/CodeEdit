@@ -7,15 +7,6 @@
 
 import SwiftUI
 
-// TODO: Drag to activate behavior.
-// In Xcode, dragging an inactive tab will make it activated. But due to our editor performance issue,
-// there will be a huge lag after releasing the drag. So I will implement this behavior after optimizing
-// the file-opening performance.
-
-// Disable `file_length` because this file has a lot of properties and algorithms.
-// I kept some blank lines to make this file organized, so I have to disable the file length rule.
-// Disable `type_body_length` because this view is fairly complicated and I have modularized some parts.
-// swiftlint:disable file_length type_body_length
 struct TabBarItemView: View {
     @Environment(\.colorScheme)
     private var colorScheme
@@ -65,21 +56,23 @@ struct TabBarItemView: View {
     @Binding
     private var onDragTabId: TabBarItemID?
 
+    @Binding
+    private var closeButtonGestureActive: Bool
+
     /// The current WorkspaceDocument object.
     ///
     /// It contains the workspace-related information like selection states.
-    @ObservedObject
-    var workspace: WorkspaceDocument
+    @EnvironmentObject
+    private var workspace: WorkspaceDocument
 
     /// The item associated with the current tab.
     ///
     /// You can get tab-related information from here, like `label`, `icon`, etc.
     private var item: TabBarItemRepresentable
 
-    /// AppKit window controller.
-    private var windowController: NSWindowController
-
-    private var isTemporary: Bool
+    private var isTemporary: Bool {
+        workspace.selectionState.temporaryTab == item.tabID
+    }
 
     /// Is the current tab the active tab.
     private var isActive: Bool {
@@ -102,15 +95,13 @@ struct TabBarItemView: View {
     private func switchAction() {
         // Only set the `selectedId` when they are not equal to avoid performance issue for now.
         if workspace.selectionState.selectedId != item.tabID {
-            workspace.selectionState.selectedId = item.tabID
+            workspace.switchedTab(item: item)
         }
     }
 
     /// Close the current tab.
     func closeAction() {
-        if prefs.preferences.general.tabBarStyle == .native {
-            isAppeared = false
-        }
+        isAppeared = false
         withAnimation(
             .easeOut(duration: prefs.preferences.general.tabBarStyle == .native ? 0.15 : 0.20)
         ) {
@@ -121,18 +112,15 @@ struct TabBarItemView: View {
     init(
         expectedWidth: Binding<CGFloat>,
         item: TabBarItemRepresentable,
-        windowController: NSWindowController,
         draggingTabId: Binding<TabBarItemID?>,
         onDragTabId: Binding<TabBarItemID?>,
-        workspace: WorkspaceDocument
+        closeButtonGestureActive: Binding<Bool>
     ) {
         self._expectedWidth = expectedWidth
         self.item = item
-        self.windowController = windowController
         self._draggingTabId = draggingTabId
         self._onDragTabId = onDragTabId
-        self.workspace = workspace
-        self.isTemporary = workspace.selectionState.temporaryTab == item.tabID
+        self._closeButtonGestureActive = closeButtonGestureActive
     }
 
     @ViewBuilder
@@ -182,9 +170,8 @@ struct TabBarItemView: View {
                             label: { EmptyView() }
                         )
                         .frame(width: 0, height: 0)
-                        .padding(0)
-                        .opacity(0)
                         .keyboardShortcut("w", modifiers: [.command])
+                        .hidden()
                     }
                     // Switch Tab Shortcut:
                     // Using an invisible button to contain the keyboard shortcut is simply
@@ -195,66 +182,19 @@ struct TabBarItemView: View {
                         label: { EmptyView() }
                     )
                     .frame(width: 0, height: 0)
-                    .padding(0)
-                    .opacity(0)
                     .keyboardShortcut(
                         workspace.getTabKeyEquivalent(item: item),
                         modifiers: [.command]
                     )
-                    .background(.blue)
-                    // Close button.
-                    Button(action: closeAction) {
-                        if prefs.preferences.general.tabBarStyle == .xcode {
-                            Image(systemName: "xmark")
-                                .font(.system(size: 11.2, weight: .regular, design: .rounded))
-                                .frame(width: 16, height: 16)
-                                .foregroundColor(
-                                    isActive
-                                    ? (
-                                        colorScheme == .dark
-                                        ? .primary
-                                        : Color(nsColor: .controlAccentColor)
-                                    )
-                                    : .secondary.opacity(0.80)
-                                )
-                        } else {
-                            Image(systemName: "xmark")
-                                .font(.system(size: 9.5, weight: .medium, design: .rounded))
-                                .frame(width: 16, height: 16)
-                        }
-                    }
-                    .buttonStyle(.borderless)
-                    .foregroundColor(isPressingClose ? .primary : .secondary)
-                    .background(
-                        colorScheme == .dark
-                        ? Color(nsColor: .white)
-                            .opacity(isPressingClose ? 0.32 : isHoveringClose ? 0.18 : 0)
-                        : (
-                            prefs.preferences.general.tabBarStyle == .xcode
-                            ? Color(nsColor: isActive ? .controlAccentColor : .black)
-                                .opacity(
-                                    isPressingClose
-                                    ? 0.25
-                                    : (isHoveringClose ? (isActive ? 0.10 : 0.06) : 0)
-                                )
-                            : Color(nsColor: .black)
-                                .opacity(isPressingClose ? 0.29 : (isHoveringClose ? 0.11 : 0))
-                        )
+                    .hidden()
+                    // Close Button
+                    TabBarItemCloseButton(
+                        isActive: isActive,
+                        isHoveringTab: isHovering,
+                        isDragging: draggingTabId != nil || onDragTabId != nil,
+                        closeAction: closeAction,
+                        closeButtonGestureActive: $closeButtonGestureActive
                     )
-                    .cornerRadius(2)
-                    .accessibilityLabel(Text("Close"))
-                    .onHover { hover in
-                        isHoveringClose = hover
-                    }
-                    .pressAction {
-                        isPressingClose = true
-                    } onRelease: {
-                        isPressingClose = false
-                    }
-                    // Only show when the mouse is hovering and there is no tab dragging.
-                    .opacity(isHovering && draggingTabId == nil && onDragTabId == nil ? 1 : 0)
-                    .animation(.easeInOut(duration: 0.08), value: isHovering)
-                    .padding(.leading, prefs.preferences.general.tabBarStyle == .xcode ? 3.5 : 4)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -313,36 +253,8 @@ struct TabBarItemView: View {
                 content
             }
             .background {
-                if inHoldingState && prefs.preferences.general.tabBarStyle == .xcode {
-                    Rectangle()
-                        .foregroundColor(
-                            isActive
-                            ? Color(nsColor: .controlAccentColor).opacity(0.08)
-                            : (colorScheme == .dark ? .white.opacity(0.08) : .black.opacity(0.08))
-                        )
-                }
-            }
-            .background {
                 if prefs.preferences.general.tabBarStyle == .xcode {
-                    ZStack {
-                        // This layer of background is to hide dividers of other tab bar items
-                        // because the original background above is translucent (by opacity).
-                        TabBarXcodeBackground()
-                        if isActive {
-                            Color(nsColor: .controlAccentColor)
-                                .saturation(
-                                    colorScheme == .dark
-                                    ? (activeState != .inactive ? 0.60 : 0.75)
-                                    : (activeState != .inactive ? 0.90 : 0.85)
-                                )
-                                .opacity(
-                                    colorScheme == .dark
-                                    ? (activeState != .inactive ? 0.50 : 0.35)
-                                    : (activeState != .inactive ? 0.18 : 0.12)
-                                )
-                                .hueRotation(.degrees(-5))
-                        }
-                    }
+                    TabBarItemBackground(isActive: isActive, isPressing: isPressing, isDragging: isDragging)
                     .animation(.easeInOut(duration: 0.08), value: isHovering)
                 } else {
                     if isFullscreen && isActive {
@@ -364,10 +276,10 @@ struct TabBarItemView: View {
             }
             // TODO: Enable the following code snippet when dragging-out behavior should be allowed.
             // Since we didn't handle the drop-outside event, dragging-out is disabled for now.
-//            .onDrag({
-//                onDragTabId = item.tabID
-//                return .init(object: NSString(string: "\(item.tabID)"))
-//            })
+            //            .onDrag({
+            //                onDragTabId = item.tabID
+            //                return .init(object: NSString(string: "\(item.tabID)"))
+            //            })
         }
         .buttonStyle(TabBarItemButtonStyle(isPressing: $isPressing))
         .simultaneousGesture(
@@ -415,7 +327,7 @@ struct TabBarItemView: View {
             }
         }
         .id(item.tabID)
-        .tabBarContextMenu(item: item, workspace: workspace, isTemporary: isTemporary)
+        .tabBarContextMenu(item: item, isTemporary: isTemporary)
     }
 }
 // swiftlint:enable type_body_length

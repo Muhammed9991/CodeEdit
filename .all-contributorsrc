@@ -454,6 +454,89 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "Eliulm",
+      "name": "Elias Wahl",
+      "avatar_url": "https://avatars.githubusercontent.com/u/82230675?v=4",
+      "profile": "https://github.com/Eliulm",
+      "contributions": [
+        "bug"
+      ]
+    },
+    {
+      "login": "bombardier200",
+      "name": "bombardier200",
+      "avatar_url": "https://avatars.githubusercontent.com/u/25121427?v=4",
+      "profile": "https://github.com/bombardier200",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "yapryntsev",
+      "name": "Alex Yapryntsev",
+      "avatar_url": "https://avatars.githubusercontent.com/u/18378212?v=4",
+      "profile": "https://github.com/yapryntsev",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "Code-DJ",
+      "name": "Code-DJ",
+      "avatar_url": "https://avatars.githubusercontent.com/u/8212554?v=4",
+      "profile": "https://github.com/Code-DJ",
+      "contributions": [
+        "code",
+        "bug"
+      ]
+    },
+    {
+      "login": "neilZon",
+      "name": "Neilzon Viloria",
+      "avatar_url": "https://avatars.githubusercontent.com/u/46465568?v=4",
+      "profile": "https://github.com/neilZon",
+      "contributions": [
+        "bug"
+      ]
+    },
+    {
+      "login": "Wouter01",
+      "name": "Wouter Hennen",
+      "avatar_url": "https://avatars.githubusercontent.com/u/62355975?v=4",
+      "profile": "https://github.com/Wouter01",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "Cubik65536",
+      "name": "Cubik",
+      "avatar_url": "https://avatars.githubusercontent.com/u/72877496?v=4",
+      "profile": "https://cubik65536.top",
+      "contributions": [
+        "bug"
+      ]
+    },
+    {
+      "login": "RenanGreca",
+      "name": "Renan Greca",
+      "avatar_url": "https://avatars.githubusercontent.com/u/5760386?v=4",
+      "profile": "https://twitter.com/RenanGreca",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "maxkel",
+      "name": "maxkel",
+      "avatar_url": "https://avatars.githubusercontent.com/u/46418077?v=4",
+      "profile": "https://github.com/maxkel",
+      "contributions": [
+        "bug",
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,

@@ -2,17 +2,19 @@ name: Build and Publish Pre-release
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - 'main'
+  workflow_call:
 
 jobs:
   pre-release:
     name: Build and Publish Pre-release
-    runs-on: macos-12
+    runs-on: [self-hosted, macOS]
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
+
+      ############################
+      # Install Certificate
+      ############################
       - name: Install codesign certificate
         env:
           # DEV_CERT_B64: Base64-encoded developer certificate as .p12
@@ -34,47 +36,86 @@ jobs:
           security create-keychain -p "$KEYCHAIN_PWD" "$KEYCHAIN_DB"
           security set-keychain-settings -lut "$KEYCHAIN_TIMEOUT" "$KEYCHAIN_DB"
           security unlock-keychain -p "$KEYCHAIN_PWD" "$KEYCHAIN_DB"
-          echo -n "$DEV_CERT_B64" | base64 --decode --output "$DEV_CERT_P12"
+          echo -n "$DEV_CERT_B64" | base64 --decode -o "$DEV_CERT_P12"
           security import "$DEV_CERT_P12" -P "$DEV_CERT_PWD" -A -t cert -f pkcs12 -k "$KEYCHAIN_DB"
-          echo -n "$MAC_CERT_B64" | base64 --decode --output "$MAC_CERT_P12"
+          echo -n "$MAC_CERT_B64" | base64 --decode -o "$MAC_CERT_P12"
           security import "$MAC_CERT_P12" -P "$MAC_CERT_PWD" -A -t cert -f pkcs12 -k "$KEYCHAIN_DB"
           security list-keychain -d user -s "$KEYCHAIN_DB"
+      
+      ############################
+      # Build
+      ############################
       - name: Build CodeEdit
         env:
           APPLE_TEAM_ID:  ${{ secrets.APPLE_TEAM_ID }}
-        run: xcodebuild -workspace CodeEdit.xcworkspace -scheme CodeEdit -configuration Release -derivedDataPath "$RUNNER_TEMP/DerivedData" -archivePath "$RUNNER_TEMP/CodeEdit.xcarchive" -skipPackagePluginValidation DEVELOPMENT_TEAM=$APPLE_TEAM_ID archive
-      - name: Create CodeEdit.dmg
+        run: xcodebuild -scheme CodeEdit -configuration Alpha -derivedDataPath "$RUNNER_TEMP/DerivedData" -archivePath "$RUNNER_TEMP/CodeEdit.xcarchive" -skipPackagePluginValidation DEVELOPMENT_TEAM=$APPLE_TEAM_ID archive
+      
+      ############################
+      # Sign
+      ############################
+      - name: Sign CodeEdit
+        env:
+          CODESIGN_SIGN: ${{ secrets.CODESIGN_SIGN }}
         run: |
           REV=$(git rev-parse --short HEAD)
           echo "REV=$REV" >> $GITHUB_ENV
-          mkdir "$RUNNER_TEMP/CodeEdit-$REV"
-          cp -r "$RUNNER_TEMP/CodeEdit.xcarchive/Products/Applications/CodeEdit.app" "$RUNNER_TEMP/CodeEdit-$REV"
-          hdiutil create -srcfolder "$RUNNER_TEMP/CodeEdit-$REV" -volname CodeEdit -format ULMO "$RUNNER_TEMP/CodeEdit-$REV.dmg"
-      - name: Notarize CodeEdit.dmg
+          codesign --sign "$CODESIGN_SIGN" -vvv --verbose --strict --options=runtime --prefix austincondiff.CodeEdit. --force --deep --timestamp "$RUNNER_TEMP/CodeEdit.xcarchive/Products/Applications/CodeEdit.app"
+
+      ############################
+      # DMG & Notarize
+      ############################
+      - name: Create DMG & Notarize
         env:
-          # APPLE_ID: Developer Apple ID
-          # APPLE_ID_PWD: App-specific password for Apple ID
-          # APPLE_TEAM_ID: Developer Team ID
+          CODESIGN_SIGN: ${{ secrets.CODESIGN_SIGN }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_ID_PWD: ${{ secrets.APPLE_ID_PWD }}
           APPLE_TEAM_ID:  ${{ secrets.APPLE_TEAM_ID }}
+          RUNNER_PW: ${{ secrets.RUNNER_PW }}
         run: |
-          xcrun notarytool submit --verbose --apple-id "$APPLE_ID" --password "$APPLE_ID_PWD" --team-id "$APPLE_TEAM_ID" --wait --timeout 2h "$RUNNER_TEMP/CodeEdit-$REV.dmg" --output-format plist > "NotarizationResponse.plist"
-          echo "**RESPONSE**"
-          cat NotarizationResponse.plist
-          id=`/usr/libexec/PlistBuddy -c "Print :id" "NotarizationResponse.plist"`
-          xcrun notarytool log --verbose --apple-id "$APPLE_ID" --password "$APPLE_ID_PWD" --team-id "$APPLE_TEAM_ID" "$id"
-          xcrun stapler staple "$RUNNER_TEMP/CodeEdit-$REV.dmg"
+          REV=$(git rev-parse --short HEAD)
+          echo "REV=$REV" >> $GITHUB_ENV
+          security unlock-keychain -p "$RUNNER_PW"
+          xcrun notarytool store-credentials CodeEdit --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_ID_PWD"
+          create-dmg \
+            --volname "CodeEdit" \
+            --window-pos 200 120 \
+            --window-size 800 400 \
+            --icon-size 100 \
+            --icon "CodeEdit.app" 200 190 \
+            --hide-extension "CodeEdit.app" \
+            --app-drop-link 600 185 \
+            --codesign "$CODESIGN_SIGN" \
+            --notarize "CodeEdit" \
+            "$RUNNER_TEMP/CodeEdit-$REV.dmg" \
+            "$RUNNER_TEMP/CodeEdit.xcarchive/Products/Applications/"
+          security lock-keychain
+          
+      ############################
+      # Get Version and Build number
+      ############################
+      - name: Get Version and Build number
+        run: |
+          APP_VERSION=$(xcrun agvtool mvers -terse1)
+          APP_BUILD=$(xcrun agvtool vers -terse)
+          echo "APP_VERSION=$APP_VERSION" >> $GITHUB_ENV
+          echo "APP_BUILD=$APP_BUILD" >> $GITHUB_ENV
+
+      ############################
+      # Sparkle Appcast
+      ############################
       - name: Update Sparkle appcast
         env:
           # SPARKLE_KEY: Sparkle EdDSA key exported from `generate_keys -x` as plain text
           # SPARKLE_CHANNEL: Seperate dev builds from default channel, to be specified in [SPUUpdaterDelegate allowedChannelsForUpdater:]
           # SPARKLE_DL_PREFIX: Prefix for the URL from where updates will be downloaded
           # SPARKLE_LINK: CodeEdit Website
+          # https://github.com/CodeEditApp/CodeEdit/releases/download/0.0.1-alpha.11/CodeEdit-9113dc5.dmg
           SPARKLE_KEY: ${{ secrets.SPARKLE_KEY }}
           SPARKLE_CHANNEL: dev
-          SPARKLE_DL_PREFIX: "https://github.com/CodeEditApp/CodeEdit/releases/download/latest"
+          SPARKLE_DL_PREFIX: "https://github.com/CodeEditApp/CodeEdit/releases/download"
           SPARKLE_LINK: "https://github.com/CodeEditApp/CodeEdit"
+          APP_VERSION: ${{ env.APP_VERSION }}
+          APP_BUILD: ${{ env.APP_BUILD }}
         run: |
           SPARKLE_BIN="$RUNNER_TEMP/DerivedData/SourcePackages/artifacts/sparkle/bin"
           SPARKLE_ARCHIVE="$RUNNER_TEMP/Sparkle_Archive"
@@ -82,19 +123,28 @@ jobs:
           mkdir "$SPARKLE_ARCHIVE"
           cp "$RUNNER_TEMP/CodeEdit-$REV.dmg" "$SPARKLE_ARCHIVE"
           SPARKLE_SIG=$("$SPARKLE_BIN/sign_update" --ed-key-file "$RUNNER_TEMP/sparkle_key" "$SPARKLE_ARCHIVE/CodeEdit-$REV.dmg" | cut -d\" -f2)
-          "$SPARKLE_BIN/generate_appcast" --ed-key-file "$RUNNER_TEMP/sparkle_key" --download-url-prefix "$SPARKLE_DL_PREFIX" --link "$SPARKLE_LINK" --channel "$SPARKLE_CHANNEL" --maximum-deltas 0 "$SPARKLE_ARCHIVE"
-          brew install xmlstarlet
-          xmlstarlet ed -O --inplace --insert "/rss/channel/item/enclosure" --type attr -n "sparkle:edSignature" -v "$SPARKLE_SIG" "$SPARKLE_ARCHIVE/appcast.xml"
+          "$SPARKLE_BIN/generate_appcast" --ed-key-file "$RUNNER_TEMP/sparkle_key" --download-url-prefix "${{ env.SPARKLE_DL_PREFIX }}/${{ env.APP_VERSION }}-alpha.${{ env.APP_BUILD }}/" --link "$SPARKLE_LINK" --channel "$SPARKLE_CHANNEL" --maximum-deltas 0 "$SPARKLE_ARCHIVE"
+
+      ############################
+      # Publish Pre Release
+      ############################
       - name: Publish Pre-release
         uses: marvinpinto/action-automatic-releases@latest
+        env:
+          APP_VERSION: ${{ env.APP_VERSION }}
+          APP_BUILD: ${{ env.APP_BUILD }}
         with:
-          title: "CodeEdit-${{ env.REV }}"
+          title: "${{ env.APP_VERSION }}-alpha.${{ env.APP_BUILD }}"
           files: |
-            "${{ RUNNER.TEMP }}/Sparkle_Archive/CodeEdit-${{ env.REV }}.dmg"
-            "${{ RUNNER.TEMP }}/Sparkle_Archive/appcast.xml"
-          automatic_release_tag: "latest"
-          prerelease: true
+            ${{ RUNNER.TEMP }}/Sparkle_Archive/CodeEdit-${{ env.REV }}.dmg
+            ${{ RUNNER.TEMP }}/Sparkle_Archive/appcast.xml
+          automatic_release_tag: "${{ env.APP_VERSION }}-alpha.${{ env.APP_BUILD }}"
+          prerelease: false
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
+
+      ############################
+      # Cleanup Secrets
+      ############################
       - name: Clean up keychain and provisioning profile
         if: ${{ always() }}
         run: |

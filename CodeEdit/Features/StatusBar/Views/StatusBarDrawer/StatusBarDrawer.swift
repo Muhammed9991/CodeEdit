@@ -8,15 +8,17 @@
 import SwiftUI
 
 struct StatusBarDrawer: View {
-    @ObservedObject
+    @EnvironmentObject
     private var model: StatusBarViewModel
+
+    @ObservedObject
+    private var prefs: AppPreferencesModel = .shared
+
+    @Environment(\.colorScheme)
+    private var colorScheme
 
     @State
     private var searchText = ""
-
-    init(model: StatusBarViewModel) {
-        self.model = model
-    }
 
     var height: CGFloat {
         if model.isMaximized {
@@ -30,25 +32,49 @@ struct StatusBarDrawer: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            switch model.selectedTab {
-            case 0: TerminalEmulatorView(url: model.workspaceURL)
-            default: Rectangle().foregroundColor(Color(nsColor: .textBackgroundColor))
+            GeometryReader { geometryProxy in
+                switch model.selectedTab {
+                case 0:
+                    TerminalEmulatorView(url: model.workspaceURL)
+                        .background {
+                            if colorScheme == .dark {
+                                if prefs.preferences.theme.selectedTheme == prefs.preferences.theme.selectedLightTheme {
+                                    Color.white
+                                } else {
+                                    EffectView(.underPageBackground)
+                                }
+                            } else {
+                                if prefs.preferences.theme.selectedTheme == prefs.preferences.theme.selectedDarkTheme {
+                                    Color.black
+                                } else {
+                                    EffectView(.contentBackground)
+                                }
+                            }
+                        }
+                        // When size changes, save new height to workspace state.
+                        .onChange(of: geometryProxy.size.height) { _ in
+                            model.saveHeightToState(height: geometryProxy.size.height)
+                        }
+                default: Rectangle().foregroundColor(Color(nsColor: .textBackgroundColor))
+                }
             }
             HStack(alignment: .center, spacing: 10) {
                 FilterTextField(title: "Filter", text: $searchText)
                     .frame(maxWidth: 300)
                 Spacer()
-                StatusBarClearButton(model: model)
+                StatusBarClearButton()
                 Divider()
-                StatusBarSplitTerminalButton(model: model)
-                StatusBarMaximizeButton(model: model)
+                StatusBarSplitTerminalButton()
+                StatusBarMaximizeButton()
             }
             .padding(10)
             .frame(maxHeight: 29)
             .background(.bar)
         }
-        .frame(minHeight: 0,
-               idealHeight: height,
-               maxHeight: height)
+        .frame(
+            minHeight: 0,
+            idealHeight: height,
+            maxHeight: height
+        )
     }
 }

@@ -69,21 +69,24 @@ final class BreadcrumbsMenuItem: NSMenuItem {
         super.init(title: fileItem.fileName, action: #selector(openFile), keyEquivalent: "")
 
         var icon = fileItem.systemImage
-        var color = fileItem.iconColor
+        var color = NSColor(fileItem.iconColor)
         isEnabled = true
         target = self
         if fileItem.children != nil {
             let subMenu = NSMenu()
             submenu = subMenu
-            icon = "folder.fill"
-            color = .secondary
+            icon = fileItem.systemImage
+            color = NSColor(named: "FolderBlue") ?? NSColor(.secondary)
         }
         let image = NSImage(
             systemSymbolName: icon,
             accessibilityDescription: icon
-        )?.withSymbolConfiguration(.init(paletteColors: [NSColor(color)]))
+        )?.withSymbolConfiguration(.init(paletteColors: [color]))
         self.image = image
         representedObject = fileItem
+        if fileItem.isFolder {
+            self.action = nil
+        }
     }
 
     @available(*, unavailable)

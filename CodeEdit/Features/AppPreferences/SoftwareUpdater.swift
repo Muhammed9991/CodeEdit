@@ -8,15 +8,15 @@
 import Foundation
 import Sparkle
 
-class SoftwareUpdater: ObservableObject {
-    private let updater: SPUUpdater
+class SoftwareUpdater: NSObject, ObservableObject, SPUUpdaterDelegate {
+    private var updater: SPUUpdater?
     private var automaticallyChecksForUpdatesObservation: NSKeyValueObservation?
     private var lastUpdateCheckDateObservation: NSKeyValueObservation?
 
     @Published
     var automaticallyChecksForUpdates = false {
         didSet {
-            updater.automaticallyChecksForUpdates = automaticallyChecksForUpdates
+            updater?.automaticallyChecksForUpdates = automaticallyChecksForUpdates
         }
     }
 
@@ -27,22 +27,42 @@ class SoftwareUpdater: ObservableObject {
     var includePrereleaseVersions = false {
         didSet {
             UserDefaults.standard.setValue(includePrereleaseVersions, forKey: "includePrereleaseVersions")
-            if includePrereleaseVersions {
-                updater.setFeedURL(.prereleaseAppcast)
-            } else {
-                updater.setFeedURL(.appcast)
-            }
         }
     }
 
-    init() {
+    private var feedURLTask: Task<(), Never>?
+
+    private func setFeedURL() async {
+        let url = URL(string: "https://api.github.com/repos/CodeEditApp/CodeEdit/releases/latest")!
+        let request = URLRequest(url: url)
+        guard let data = try? await URLSession.shared.data(for: request),
+              let result = try? JSONDecoder().decode(GHAPIResult.self, from: data.0) else {
+            DispatchQueue.main.async {
+                self.updater?.setFeedURL(nil)
+            }
+            return
+        }
+        URL.appcast = URL(
+            string: "https://github.com/CodeEditApp/CodeEdit/releases/download/\(result.tagName)/appcast.xml"
+        )!
+        DispatchQueue.main.async {
+            self.updater?.setFeedURL(.appcast)
+        }
+    }
+
+    override init() {
+        super.init()
         updater = SPUStandardUpdaterController(
             startingUpdater: true,
-            updaterDelegate: nil,
+            updaterDelegate: self,
             userDriverDelegate: nil
         ).updater
 
-        automaticallyChecksForUpdatesObservation = updater.observe(
+        feedURLTask = Task {
+            await setFeedURL()
+        }
+
+        automaticallyChecksForUpdatesObservation = updater?.observe(
             \.automaticallyChecksForUpdates,
             options: [.initial, .new, .old],
             changeHandler: { [unowned self] updater, change in
@@ -51,7 +71,7 @@ class SoftwareUpdater: ObservableObject {
             }
         )
 
-        lastUpdateCheckDateObservation = updater.observe(
+        lastUpdateCheckDateObservation = updater?.observe(
             \.lastUpdateCheckDate,
             options: [.initial, .new, .old],
             changeHandler: { [unowned self] updater, _ in
@@ -62,12 +82,34 @@ class SoftwareUpdater: ObservableObject {
         includePrereleaseVersions = UserDefaults.standard.bool(forKey: "includePrereleaseVersions")
     }
 
+    deinit {
+        feedURLTask?.cancel()
+    }
+
+    func allowedChannels(for updater: SPUUpdater) -> Set<String> {
+        if includePrereleaseVersions {
+            return ["dev"]
+        }
+        return []
+    }
+
     func checkForUpdates() {
-        updater.checkForUpdates()
+        updater?.checkForUpdates()
+    }
+
+    private struct GHAPIResult: Codable {
+        enum CodingKeys: String, CodingKey {
+            case tagName = "tag_name"
+        }
+
+        var tagName: String
     }
 }
 
 extension URL {
-    static let appcast = URL(string: "https://codeeditapp.github.io/CodeEdit/appcast.xml")!
-    static let prereleaseAppcast = URL(string: "https://codeeditapp.github.io/CodeEdit/appcast_pre.xml")!
+    static var appcast = URL(
+        string: "https://github.com/CodeEditApp/CodeEdit/releases/download/latest/appcast.xml"
+    )!
 }
+
+// https://github.com/CodeEditApp/CodeEdit/releases/download/0.0.1-alpha.10/appcast.xml

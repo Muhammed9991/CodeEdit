@@ -24,15 +24,12 @@ struct TabBarView: View {
     private var activeState
 
     /// The workspace document.
-    @ObservedObject
+    @EnvironmentObject
     private var workspace: WorkspaceDocument
 
     /// The app preference.
     @StateObject
     private var prefs: AppPreferencesModel = .shared
-
-    /// The controller of current NSWindow.
-    private let windowController: NSWindowController
 
     /// The tab id of current dragging tab.
     ///
@@ -117,11 +114,8 @@ struct TabBarView: View {
     @State
     private var onDragLastLocation: CGPoint?
 
-    // TabBar(windowController: windowController, workspace: workspace)
-    init(windowController: NSWindowController, workspace: WorkspaceDocument) {
-        self.windowController = windowController
-        self.workspace = workspace
-    }
+    @State
+    private var closeButtonGestureActive: Bool = false
 
     /// Update the expected tab width when corresponding UI state is updated.
     ///
@@ -141,6 +135,10 @@ struct TabBarView: View {
     private func makeTabDragGesture(id: TabBarItemID) -> some Gesture {
         return DragGesture(minimumDistance: 2, coordinateSpace: .global)
             .onChanged({ value in
+                if closeButtonGestureActive {
+                    return
+                }
+
                 if draggingTabId != id {
                     shouldOnDrag = false
                     draggingTabId = id
@@ -239,7 +237,7 @@ struct TabBarView: View {
                 // In order to avoid the lag due to the update of workspace state.
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.40) {
                     if draggingStartLocation == nil {
-                        workspace.selectionState.openedTabs = openedTabs
+                        workspace.reorderedTabs(openedTabs: openedTabs)
                     }
                 }
             })
@@ -302,15 +300,14 @@ struct TabBarView: View {
                                     TabBarItemView(
                                         expectedWidth: $expectedTabWidth,
                                         item: item,
-                                        windowController: windowController,
                                         draggingTabId: $draggingTabId,
                                         onDragTabId: $onDragTabId,
-                                        workspace: workspace
+                                        closeButtonGestureActive: $closeButtonGestureActive
                                     )
                                     .frame(height: TabBarView.height)
                                     .background(makeTabItemGeometryReader(id: id))
                                     .offset(x: tabOffsets[id] ?? 0, y: 0)
-                                    .highPriorityGesture(
+                                    .simultaneousGesture(
                                         makeTabDragGesture(id: id),
                                         including: shouldOnDrag ? .subviews : .all
                                     )
@@ -338,6 +335,16 @@ struct TabBarView: View {
                             updateExpectedTabWidth(proxy: geometryProxy)
                             // On first tab appeared, jump to the corresponding position.
                             scrollReader.scrollTo(workspace.selectionState.selectedId)
+                        }
+                        .onChange(of: workspace.selectionState.openedTabs) { _ in
+                            DispatchQueue.main.asyncAfter(
+                                deadline: .now() + .milliseconds(
+                                    prefs.preferences.general.tabBarStyle == .native ? 150 : 200
+                                )
+                            ) {
+                                guard let selectedID = workspace.selectionState.selectedId else { return }
+                                scrollReader.scrollTo(selectedID)
+                            }
                         }
                         // When selected tab is changed, scroll to it if possible.
                         .onChange(of: workspace.selectionState.selectedId) { targetId in
@@ -392,17 +399,11 @@ struct TabBarView: View {
             }
         }
         .background {
-            if prefs.preferences.general.tabBarStyle == .xcode {
-                EffectView(
-                    NSVisualEffectView.Material.titlebar,
-                    blendingMode: NSVisualEffectView.BlendingMode.withinWindow
-                )
-                // Set bottom padding to avoid material overlapping in bar.
-                .padding(.bottom, TabBarView.height)
-                .edgesIgnoringSafeArea(.top)
-            } else {
+            if prefs.preferences.general.tabBarStyle == .native {
                 TabBarNativeMaterial()
                     .edgesIgnoringSafeArea(.top)
+            } else {
+                EffectView(.headerView)
             }
         }
         .padding(.leading, -1)

@@ -15,6 +15,9 @@ extension AppPreferences {
         /// If true terminal appearance will always be `dark`. Otherwise it adapts to the system setting.
         var darkAppearance: Bool = false
 
+        /// if true, the terminal uses the background color of the theme, otherwise it is clear
+        var useThemeBackground: Bool = true
+
         /// If true, the terminal treats the `Option` key as the `Meta` key
         var optionAsMeta: Bool = false
 
@@ -52,7 +55,7 @@ extension AppPreferences {
         var customFont: Bool = false
 
         /// The font size for the custom font
-        var size: Int = 11
+        var size: Int = 12
 
         /// The name of the custom font
         var name: String = "SFMono-Medium"

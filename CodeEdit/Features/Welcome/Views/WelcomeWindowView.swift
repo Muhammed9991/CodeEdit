@@ -33,16 +33,13 @@ struct WelcomeWindowView: View {
                 newDocument: newDocument,
                 dismissWindow: dismissWindow
             )
-            RecentProjectsView(
-                openDocument: openDocument,
-                dismissWindow: dismissWindow
-            )
+            RecentProjectsListView(openDocument: openDocument, dismissWindow: dismissWindow)
+                .frame(width: 300)
         }
         .edgesIgnoringSafeArea(.top)
     }
 
     /// Helper function which opens welcome view
-    /// TODO: Move this to WelcomeModule after CodeEditDocumentController is in separate module
     static func openWelcomeWindow() {
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 800, height: 460),

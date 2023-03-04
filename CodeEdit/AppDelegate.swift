@@ -24,12 +24,13 @@ final class CodeEditApplication: NSApplication {
 
 }
 
-@NSApplicationMain
+@main
 final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     var updater: SoftwareUpdater = SoftwareUpdater()
 
     func applicationWillFinishLaunching(_ notification: Notification) {
         _ = CodeEditDocumentController.shared
+        enableWindowSizeSaveOnQuit()
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -39,20 +40,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         DispatchQueue.main.async {
             var needToHandleOpen = true
 
-            if NSApp.windows.isEmpty {
-                if let projects = UserDefaults.standard.array(forKey: AppDelegate.recoverWorkspacesKey) as? [String],
-                   !projects.isEmpty {
-                    projects.forEach { path in
-                        let url = URL(fileURLWithPath: path)
-                        CodeEditDocumentController.shared.reopenDocument(for: url,
-                                                                        withContentsOf: url,
-                                                                        display: true) { document, _, _ in
-                            document?.windowControllers.first?.synchronizeWindowTitleWithDocumentName()
-                        }
-                    }
-
-                    needToHandleOpen = false
-                }
+            // If no windows were reopened by NSQuitAlwaysKeepsWindows, do default behavior.
+            if !NSApp.windows.isEmpty {
+                needToHandleOpen = false
             }
 
             for index in 0..<CommandLine.arguments.count {
@@ -60,9 +50,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
                     let path = CommandLine.arguments[index+1]
                     let url = URL(fileURLWithPath: path)
 
-                    CodeEditDocumentController.shared.reopenDocument(for: url,
-                                                                    withContentsOf: url,
-                                                                    display: true) { document, _, _ in
+                    CodeEditDocumentController.shared.reopenDocument(
+                        for: url,
+                        withContentsOf: url,
+                        display: true
+                    ) { document, _, _ in
                         document?.windowControllers.first?.synchronizeWindowTitleWithDocumentName()
                     }
 
@@ -180,6 +172,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         FeedbackView().showWindow()
     }
 
+    @IBAction func checkForUpdates(_ sender: Any) {
+        updater.checkForUpdates()
+    }
+
     /// Tries to focus a window with specified view content type.
     /// - Parameter type: The type of viewContent which hosted in a window to be focused.
     /// - Returns: `true` if window exist and focused, oterwise - `false`
@@ -211,9 +207,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
                 CodeEditDocumentController.shared.reopenDocument(
                     for: fileURL,
                     withContentsOf: fileURL,
-                    display: true) { document, _, _ in
-                        document?.windowControllers.first?.synchronizeWindowTitleWithDocumentName()
-                    }
+                    display: true
+                ) { document, _, _ in
+                    document?.windowControllers.first?.synchronizeWindowTitleWithDocumentName()
+                }
             }
 
             defaults.removeObject(forKey: "openInCEFiles")
@@ -222,6 +219,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
             self.checkForFilesToOpen()
         }
+    }
+
+    /// Enable window size restoring on app relaunch after quitting.
+    private func enableWindowSizeSaveOnQuit() {
+        // This enables window restoring on normal quit (instead of only on force-quit).
+        UserDefaults.standard.setValue(true, forKey: "NSQuitAlwaysKeepsWindows")
     }
 
     // MARK: - Preferences
@@ -252,8 +255,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
             Preferences.Pane(
                 identifier: Preferences.PaneIdentifier("Navigation"),
                 title: "Navigation",
-                toolbarIcon: NSImage(systemSymbolName: "arrow.triangle.turn.up.right.diamond",
-                                     accessibilityDescription: nil)!
+                toolbarIcon: NSImage(
+                    systemSymbolName: "arrow.triangle.turn.up.right.diamond",
+                    accessibilityDescription: nil
+                )!
             ) {
                 PreferencesPlaceholderView()
             },
